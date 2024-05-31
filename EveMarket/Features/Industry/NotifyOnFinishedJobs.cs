@@ -5,7 +5,7 @@ using static EveMarket.HttpClients.EveEntities.Market;
 
 namespace EveMarket.Features.Industry
 {
-    public class IndustryTestHandler
+    public class NotifyOnFinishedJobs
     {
 
         public class Handler(EveClient EveClient) : IRequestHandler<ForCharacter, bool>
@@ -14,8 +14,10 @@ namespace EveMarket.Features.Industry
 
             public async Task<bool> Handle(ForCharacter request, CancellationToken cancellationToken)
             {
+                var jobs = await _eveClient.GetJobsForCharacter(2118394509, cancellationToken);
+
                 var notifyTest = new NotifyByEmailWhenIndustryIsDone(_eveClient);
-                var result = await notifyTest.Handle(request.CharacterId, cancellationToken);
+                var result = await notifyTest.Handle(cancellationToken);
 
                 return result;
             }

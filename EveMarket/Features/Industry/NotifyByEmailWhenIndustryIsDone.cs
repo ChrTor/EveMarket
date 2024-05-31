@@ -13,10 +13,8 @@ namespace EveMarket.Features.Industry
         {
             _eveClient = eveClient;
         }
-        public async Task<bool> Handle(int characterId, CancellationToken cancellationToken)
+        public async Task<bool> Handle(CancellationToken cancellationToken)
         {
-            var jobs = await _eveClient.GetJobsForCharacter(2118394509, cancellationToken);
-
             var emailSender = new SendEmail();
             emailSender.Handle();
 

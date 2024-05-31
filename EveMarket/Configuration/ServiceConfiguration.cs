@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using EveMarket.HttpClients;
+using System.Reflection;
 
 namespace EveMarket.Configuration
 {
@@ -6,7 +7,12 @@ namespace EveMarket.Configuration
     {
         public static IServiceCollection AddServices(this IServiceCollection services, IConfiguration configuration)
         {
-            return services.AddMediatR(c => c.RegisterServicesFromAssemblies(typeof(ServiceConfiguration).Assembly));
+            services
+                .AddMediatR(c => c.RegisterServicesFromAssemblies(typeof(ServiceConfiguration).Assembly))
+                .AddHttpClient()
+                .AddTransient<EveClient>();
+
+            return services;
 
         }
     }

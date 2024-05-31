@@ -2,6 +2,7 @@
 using EveMarket.Features.Market;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Rewrite;
 using static EveMarket.EveData.EveRegions;
 using static EveMarket.HttpClients.EveEntities.Market;
 
@@ -38,8 +39,18 @@ namespace EvE.Endpoints
             group.MapPost("/jobs", async (int CharacterId,
                 ISender sender, CancellationToken cancellationToken) =>
             {
-                var result = await sender.Send(new IndustryTestHandler.ForCharacter(CharacterId), cancellationToken);
+                var result = await sender.Send(new NotifyOnFinishedJobs.ForCharacter(CharacterId), cancellationToken);
                 return result;
+            });
+
+            group.MapGet("/oauth-callback", async (HttpContext context) =>
+            {
+                var code = context.Request.Query["code"];
+                var state = context.Request.Query["state"];
+
+
+                ISender sender = context.RequestServices.GetRequiredService<ISender>();
+                return await sender.Send(new EveAuthCallBack.WithCredentials(code));
             });
 
 
