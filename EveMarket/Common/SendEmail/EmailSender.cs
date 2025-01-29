@@ -3,7 +3,7 @@ using System.Net;
 
 namespace EveMarket.Common.SendEmail
 {
-    public class SendEmail
+    public class EmailSender
     {
         public void Handle()
         {
