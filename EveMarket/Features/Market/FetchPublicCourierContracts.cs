@@ -1,19 +1,18 @@
-﻿using EveMarket.EveData;
+﻿using ErrorOr;
+using EveMarket.EveData;
 using EveMarket.HttpClients;
-using EveMarket.HttpClients.EveEntities;
 using MediatR;
-using System.Collections.Immutable;
 using static EveMarket.HttpClients.EveEntities.Contracts;
 
 namespace EveMarket.Features.Market
 {
     public static class FetchPublicCourierContracts
     {
-        public class Handler(EveClient EveClient) : IRequestHandler<FromRegion, ContractResponse>
+        public class Handler(EveClient EveClient) : IRequestHandler<FromRegion, ErrorOr<ContractResponse>>
         {
             private readonly EveClient _eveClient = EveClient;
 
-            public async Task<ContractResponse> Handle(FromRegion request, CancellationToken cancellationToken)
+            public async Task<ErrorOr<ContractResponse>> Handle(FromRegion request, CancellationToken cancellationToken)
             {
                 var couriersContracts = new List<Contract>();
                 foreach (var region in EveRegions.RegionList)
@@ -30,11 +29,13 @@ namespace EveMarket.Features.Market
                     && x.Collateral <= request.Budget));
                 }
 
+                if (!couriersContracts.Any()) return Error.NotFound("No contracts found");
+
                 return new ContractResponse(couriersContracts);
             }
         }
 
-        public record FromRegion(EveRegions.RegionEnum RegionId, double MaxVolume, int Budget) : IRequest<ContractResponse>;
+        public record FromRegion(EveRegions.RegionEnum RegionId, double MaxVolume, int Budget) : IRequest<ErrorOr<ContractResponse>>;
         public record ContractResponse(IEnumerable<Contract> Contracts);
     }
 }

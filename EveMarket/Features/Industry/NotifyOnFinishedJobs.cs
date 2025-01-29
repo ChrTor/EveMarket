@@ -1,4 +1,5 @@
-﻿using EveMarket.EveData;
+﻿using EveMarket.Common.SendEmail;
+using EveMarket.EveData;
 using EveMarket.HttpClients;
 using MediatR;
 using static EveMarket.HttpClients.EveEntities.Market;
@@ -8,22 +9,23 @@ namespace EveMarket.Features.Industry
     public class NotifyOnFinishedJobs
     {
 
-        public class Handler(EveClient EveClient) : IRequestHandler<ForCharacter, bool>
+        public class Handler(EveClient EveClient) : IRequestHandler<ForCharacter>
         {
             private readonly EveClient _eveClient = EveClient;
 
-            public async Task<bool> Handle(ForCharacter request, CancellationToken cancellationToken)
+            public async Task Handle(ForCharacter request, CancellationToken cancellationToken)
             {
                 var jobs = await _eveClient.GetJobsForCharacter(2118394509, cancellationToken);
 
-                var notifyTest = new NotifyByEmailWhenIndustryIsDone(_eveClient);
-                var result = await notifyTest.Handle(cancellationToken);
 
-                return result;
+                var emailSender = new EmailSender();
+                emailSender.Handle();
+
+                // Perhaps store the attempt?
             }
         }
 
-        public record ForCharacter(int CharacterId) : IRequest<bool>;
+        public record ForCharacter(int CharacterId) : IRequest;
     }
 }
 

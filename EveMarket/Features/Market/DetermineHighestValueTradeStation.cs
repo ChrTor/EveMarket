@@ -3,16 +3,17 @@ using EveMarket.HttpClients;
 using static EveMarket.HttpClients.EveEntities.Market;
 using EveMarket.EveData;
 using System.Net.Mail;
+using ErrorOr;
 
 namespace EveMarket.Features.Market
 {
     public static class DetermineHighestValueTradeStation
     {
-        public class Handler(EveClient EveClient) : IRequestHandler<ForCommodity, IEnumerable<OrderResponse>>
+        public class Handler(EveClient EveClient) : IRequestHandler<ForCommodity, ErrorOr<HighestValueSales>>
         {
             private readonly EveClient _eveClient = EveClient;
 
-            public async Task<IEnumerable<OrderResponse>> Handle(ForCommodity request, CancellationToken cancellationToken)
+            public async Task<ErrorOr<HighestValueSales>> Handle(ForCommodity request, CancellationToken cancellationToken)
             {
                 List<Order> AllOrders = [];
                 foreach (var region in EveRegions.RegionList)
@@ -20,57 +21,57 @@ namespace EveMarket.Features.Market
                     var orders = await GetMostValuableOrdersFromRegion(request.OrderType.ToString(), region.Region_Id, request.TypeId, cancellationToken);
                     if (!orders.Any())
                     {
-                        // Implement ErrorOr?
                         continue;
                     }
 
                     AllOrders.AddRange(orders);
                 }
+                if (!AllOrders.Any()) return Error.NotFound("No order found in any region");
 
-                var HighestValueOrders = await HighestPriceOrderPerSystem(AllOrders, request.CurrentSystem, cancellationToken);
-                var sortedList = HighestValueOrders.OrderByDescending(x => x.Price_Per_Jump);
+                var highestValueOrders = await HighestPriceOrderPerSystem(AllOrders, request.CurrentSystem, cancellationToken);
+                if (!highestValueOrders.Any()) return Error.NotFound("No routes found.");
 
-                return sortedList;
+                return new HighestValueSales(highestValueOrders);
             }
 
-            private async Task<IEnumerable<OrderResponse>> HighestPriceOrderPerSystem(List<Order> allOrders, int currentSystem, CancellationToken cancellationToken)
+            private async Task<IEnumerable<SellValue>> HighestPriceOrderPerSystem(List<Order> allOrders, int currentSystem, CancellationToken cancellationToken)
             {
-                var highestValueOrders = new List<OrderResponse>();
+                var highestValueOrders = new List<SellValue>();
                 foreach (var order in allOrders)
                 {
-                    var route = await _eveClient.GetRoute(currentSystem, order.System_Id, cancellationToken);
+                    var route = await _eveClient.GetRoute(currentSystem, order.SystemId, cancellationToken);
                     if (route is null)
                     {
                         continue;
                     }
 
-                    highestValueOrders.Add(new OrderResponse(await SetSystemName(order.System_Id, cancellationToken), order.Price / route.Count(), order.Price, route.Count()));
+                    highestValueOrders.Add(new SellValue(await SetSystemName(order.SystemId, cancellationToken), order.Price / route.Count(), order.Price, route.Count()));
                 }
 
-                return highestValueOrders;
+                return highestValueOrders.OrderByDescending(x => x.PricePerJump);
             }
-
             private async Task<string> SetSystemName(long system_Id, CancellationToken cancellationToken)
             {
                 var system = await _eveClient.GetSystem(system_Id, cancellationToken);
                 return system.Name;
             }
-
             private async Task<IEnumerable<Order>> GetMostValuableOrdersFromRegion(string orderType, int regionId, int typeId, CancellationToken cancellationToken)
             {
-                var orders = await _eveClient.GetOrdersForCommodity(orderType, regionId, typeId, cancellationToken);
-                if (!orders.Any()) return orders;
 
-                var cheapestOrdersByLocation = orders
-                    .GroupBy(o => o.Location_Id)
+                var response = await _eveClient.GetOrdersForCommodity(orderType, regionId, typeId, cancellationToken);
+                if (!response.Orders.Any()) return response.Orders;
+
+                response.Orders
+                    .GroupBy(o => o.LocationId)
                     .Select(g => g.OrderByDescending(o => o.Price).First());
 
-                return cheapestOrdersByLocation;
+                return response.Orders;
             }
 
         }
 
-        public record ForCommodity(int TypeId, OrderType OrderType, int CurrentSystem) : IRequest<IEnumerable<OrderResponse>>;
-        public record OrderResponse(string SystemName, float Price_Per_Jump, float Price, int Jumps);
+        public record ForCommodity(int TypeId, OrderType OrderType, int CurrentSystem) : IRequest<ErrorOr<HighestValueSales>>;
+        public record HighestValueSales(IEnumerable<SellValue> SellValues);
+        public record SellValue(string SystemName, float PricePerJump, float Price, int Jumps);
     }
 }

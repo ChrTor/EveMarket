@@ -5,16 +5,18 @@ using static EveMarket.HttpClients.EveEntities.Locations;
 using static EveMarket.HttpClients.EveEntities.Market;
 using static EveMarket.HttpClients.EveEntities.Industry;
 using Microsoft.Extensions.Options;
+using EveMarket.Features.Market;
 
 namespace EveMarket.HttpClients
 {
     public class EveClient
     {
         public HttpClient httpClient { get; set; }
-        public EveOptions EveOptions { get; set; }    
+        public EveOptions EveOptions { get; set; }
+        public Profile Profile { get; set; }
         public const string EveDefaultDataSource = "tranquility";
 
-        public EveClient(HttpClient httpClient, IOptionsMonitor<EveOptions> optionsMonitor)
+        public EveClient(HttpClient httpClient, IOptionsMonitor<EveOptions> optionsMonitor, IOptionsMonitor<Profile> profileMonitor)
         { 
             this.httpClient = httpClient;
             this.httpClient.BaseAddress = new Uri("https://esi.evetech.net/latest/");
@@ -22,6 +24,12 @@ namespace EveMarket.HttpClients
             optionsMonitor.OnChange(options =>
             {
                 EveOptions = options;
+            });
+
+            Profile = profileMonitor.CurrentValue;
+            profileMonitor.OnChange(profile =>
+            {
+                Profile = profile;
             });
         }
 
@@ -42,7 +50,7 @@ namespace EveMarket.HttpClients
             return route;
         }
 
-        public async Task<IEnumerable<Order>> GetOrdersForCommodity(string orderType, int regionId, int typeId, CancellationToken cancellationToken)
+        public async Task<FetchPricing.PricingResponse> GetOrdersForCommodity(string orderType, int regionId, int typeId, CancellationToken cancellationToken)
         {
             string url = $"markets/{regionId}/orders/?datasource=tranquility&order_type={orderType}&page=1&type_id={typeId}";
 
@@ -50,9 +58,8 @@ namespace EveMarket.HttpClients
             response.EnsureSuccessStatusCode();
 
             using var responseStream = await response.Content.ReadAsStreamAsync();
-            var orders = await JsonSerializer.DeserializeAsync<List<Order>>(responseStream, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-            return orders;
+            var orders = await JsonSerializer.DeserializeAsync<IEnumerable<Order>>(responseStream, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower});
+            return new FetchPricing.PricingResponse(orders);
         }
 
         public async Task<SolarSystem> GetSystem(long system_Id, CancellationToken cancellationToken)
@@ -82,7 +89,7 @@ namespace EveMarket.HttpClients
 
         public async Task<IEnumerable<Job>> GetJobsForCharacter(int characterId, CancellationToken cancellationToken)
         {
-            string url = $"characters/{characterId}/industry/jobs/?datasource=tranquility&token={EveOptions.Code}";
+            string url = $"characters/{characterId}/industry/jobs/?datasource=tranquility&token={Profile.Code}";
             var response = await httpClient.GetAsync(url, cancellationToken);
             response.EnsureSuccessStatusCode();
 
@@ -94,13 +101,12 @@ namespace EveMarket.HttpClients
 
         public async Task AuthenticateCode(string code, CancellationToken cancellationToken)
         {
-            string url = $"oauth/token";
-            httpClient.BaseAddress = new Uri("https://login.eveonline.com/");
+            string url = $"{EveOptions.FetchTokenUrl}?code={code}&token={EveOptions.SecretKey}" ;
+            httpClient.BaseAddress = new Uri("https://login.eveonline.com/v2");
 
             try
             {
                 var response = await httpClient.GetAsync(url, cancellationToken);
-
                 response.EnsureSuccessStatusCode();
 
                 httpClient.BaseAddress = new Uri("https://esi.evetech.net/latest/");
