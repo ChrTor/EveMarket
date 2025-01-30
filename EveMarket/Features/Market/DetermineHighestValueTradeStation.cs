@@ -39,7 +39,7 @@ namespace EveMarket.Features.Market
                 var highestValueOrders = new List<SellValue>();
                 foreach (var order in allOrders)
                 {
-                    var route = await _eveClient.GetRoute(currentSystem, order.SystemId, cancellationToken);
+                    var route = await _eveClient.GetRoute(currentSystem, (int)order.SystemId, cancellationToken);
                     if (route is null)
                     {
                         continue;

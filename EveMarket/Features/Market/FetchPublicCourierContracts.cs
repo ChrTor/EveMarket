@@ -14,24 +14,13 @@ namespace EveMarket.Features.Market
 
             public async Task<ErrorOr<ContractResponse>> Handle(FromRegion request, CancellationToken cancellationToken)
             {
-                var couriersContracts = new List<Contract>();
-                foreach (var region in EveRegions.RegionList)
+                var contracts = await _eveClient.GetContractsForRegion((int)request.RegionId, cancellationToken);
+                if (!contracts.Any())
                 {
-                    var contracts = await _eveClient.GetContractsForRegion((int)request.RegionId, cancellationToken);
-                    if (!contracts.Any())
-                    {
-                        continue;
-                    }
-
-                    couriersContracts.AddRange(contracts.Where(x =>
-                    x.Type == Types.courier.ToString()
-                    && x.Volume <= request.MaxVolume
-                    && x.Collateral <= request.Budget));
+                    return Error.NotFound("No contracts found");
                 }
 
-                if (!couriersContracts.Any()) return Error.NotFound("No contracts found");
-
-                return new ContractResponse(couriersContracts);
+                return new ContractResponse(contracts);
             }
         }
 

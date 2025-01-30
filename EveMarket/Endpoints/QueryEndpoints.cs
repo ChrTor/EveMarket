@@ -30,6 +30,13 @@ namespace EvE.Endpoints
                 return result;
             }).Produces<ErrorOr<FetchPricing.PricingResponse>>();
 
+            group.MapPost("/route", async ([FromQuery] RegionEnum OriginRegion, [FromQuery] RegionEnum DestinationRegion,
+                ISender sender, CancellationToken cancellationToken) =>
+            {
+                var result = await sender.Send(new GetRoute.WithRegions(OriginRegion, DestinationRegion), cancellationToken);
+                return result;
+            }).Produces<ErrorOr<GetRoute.RouteResponse>>();
+
             group.MapPost("/bestroute", async (int TypeId, [FromQuery]OrderType OrderType, int CurrentSystem, 
                 ISender sender, CancellationToken cancellationToken) =>
             {

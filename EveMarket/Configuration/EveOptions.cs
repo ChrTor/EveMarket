@@ -5,6 +5,7 @@ public class EveOptions
     public required string AuthUrl { get; set; }
     public required string FetchTokenUrl { get; set; }
     public required string CallbackUrl { get; set; }
+    public required string AuthTokenCallbackUrl { get; set; }
     public required string State { get; set; }
     public Profile? Profile { get; set; }
     public required List<EnabledScope> EnabledScopes { get; set; }
