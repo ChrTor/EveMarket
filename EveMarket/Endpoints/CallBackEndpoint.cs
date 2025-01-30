@@ -23,7 +23,17 @@ namespace EvE.Endpoints
                 var authCode = context.Request.Query["code"];
 
                 ISender sender = context.RequestServices.GetRequiredService<ISender>();
-                await sender.Send(new SetProfileCode.WithCredentials(code: authCode!));
+                await sender.Send(new SetAndAuthorizeProfileCode.WithCredentials(code: authCode!));
+                return Results.Redirect("/swagger/index.html");
+            });
+
+            group.MapGet("/api/authcode-callback", async (HttpContext context) =>
+            {
+                // Used by CCP to return profile code.
+                var authCode = context.Request;
+
+                //ISender sender = context.RequestServices.GetRequiredService<ISender>();
+                //await sender.Send(new SetAndAuthorizeProfileCode.WithCredentials(code: authCode!));
                 return Results.Redirect("/swagger/index.html");
             });
 

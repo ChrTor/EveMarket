@@ -15,7 +15,7 @@ namespace EveMarket.Features.Industry
 
             public async Task Handle(ForCharacter request, CancellationToken cancellationToken)
             {
-                var jobs = await _eveClient.GetJobsForCharacter(2118394509, cancellationToken);
+                var jobs = await _eveClient.GetJobsForCharacter(request.CharacterId, cancellationToken);
 
 
                 var emailSender = new EmailSender();

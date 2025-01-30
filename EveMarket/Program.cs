@@ -52,8 +52,8 @@ try
     var option = new RewriteOptions();
     // Testing Player Auth
     var encodedUrl = HttpUtility.UrlEncode(eveOptions!.CallbackUrl);
-    //option.AddRedirect("^$", "swagger");
-    option.AddRedirect("^$", $"{eveOptions.AuthUrl}?response_type=code&redirect_uri={encodedUrl}&client_id={eveOptions.ClientId}&scope={eveOptions.EnabledScopes[0].Address}&code_challenge={eveOptions.SecretKey}&code_challenge_method=S256&state={eveOptions.State}");
+    option.AddRedirect("^$", "swagger");
+    //option.AddRedirect("^$", $"{eveOptions.AuthUrl}?response_type=code&redirect_uri={encodedUrl}&client_id={eveOptions.ClientId}&scope={eveOptions.EnabledScopes[0].Address}&code_challenge={eveOptions.SecretKey}&code_challenge_method=S256&state={eveOptions.State}");
     
     app.UseRewriter(option);
     app.UseHttpsRedirection();
